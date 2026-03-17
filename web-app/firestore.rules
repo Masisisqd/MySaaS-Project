@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isBoard() {
+      return isAuthenticated() && request.auth.token.role == 'BOARD';
+    }
+    
+    function isCEO() {
+      return isAuthenticated() && request.auth.token.role == 'CEO';
+    }
+
+    function isFamilyMember(familyId) {
+      return isAuthenticated() && request.auth.token.familyId == familyId;
+    }
+
+    // 1. Families (The Holding Corp)
+    match /families/{familyId} {
+      // Any authenticated user can read their own family data
+      allow read: if isFamilyMember(familyId);
+      // Only BOARD can update family data (like Tax pots)
+      allow write: if isBoard() && isFamilyMember(familyId);
+    }
+
+    // 2. Users Collection
+    match /users/{userId} {
+      // User can read their own profile. BOARD can read all users in their family.
+      allow read: if isAuthenticated() && (request.auth.uid == userId || (isBoard() && isFamilyMember(resource.data.familyId)));
+      // User can update their own profile, BOARD can update others in family.
+      allow write: if isAuthenticated() && (request.auth.uid == userId || (isBoard() && isFamilyMember(resource.data.familyId)));
+    }
+
+    // 3. Companies (Owned by CEOs)
+    match /companies/{companyId} {
+      // CEO can read their own company. BOARD can read any company in their family.
+      allow read: if isAuthenticated() && (
+        (isCEO() && resource.data.ceoId == request.auth.uid) ||
+        (isBoard() && isFamilyMember(resource.data.familyId))
+      );
+      // CEOs can update their company info (but not balances - done via functions). 
+      // For now, allow BOARD to manage Companies entirely, and CEOs to only update non-financials if needed.
+      allow write: if isBoard() && isFamilyMember(resource.data.familyId);
+    }
+
+    // 4. Contracts (Chores)
+    match /contracts/{contractId} {
+      // Anyone in the family can read contracts
+      allow read: if isFamilyMember(resource.data.familyId);
+      
+      // BOARD can create/update/delete any contract. 
+      // CEOs can only update status to PENDING_QA if they meet Academic requirements.
+      allow write: if isBoard() && isFamilyMember(resource.data.familyId);
+      
+      // Allow CEO to submit work (Status -> PENDING_QA, proofImage)
+      allow update: if isCEO() 
+                    && isFamilyMember(resource.data.familyId) 
+                    && resource.data.assigneeId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proofImageUrl', 'updatedAt']);
+    }
+
+    // 5. Academic Logs
+    match /academicLogs/{logId} {
+      // User can read their own logs. BOARD can read all.
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        (isBoard() && isFamilyMember(resource.data.familyId))
+      );
+      // CEOs can create logs. BOARD can update (verify) them.
+      allow create: if isCEO() && request.resource.data.userId == request.auth.uid;
+      allow update: if isBoard() && isFamilyMember(resource.data.familyId);
+      allow delete: if isBoard() && isFamilyMember(resource.data.familyId);
+    }
+
+    // 6. Equipments
+    match /equipments/{equipmentId} {
+      // Anyone in family can read
+      allow read: if isFamilyMember(resource.data.familyId);
+      // Only BOARD can write
+      allow write: if isBoard() && isFamilyMember(resource.data.familyId);
+    }
+
+    // 7. Invoices
+    match /invoices/{invoiceId} {
+      // CEO can read their own invoices. BOARD can read all.
+      allow read: if isAuthenticated() && (
+        (isCEO() && resource.data.ceoId == request.auth.uid) || 
+        (isBoard() && isFamilyMember(resource.data.familyId))
+      );
+      // Only BOARD can create/settle invoices explicitly (usually via Cloud Functions)
+      allow write: /* Best practice: managed by Cloud Functions */ if false; 
+    }
+  }
+}
