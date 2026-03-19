@@ -68,9 +68,10 @@ def main():
     if not success:
         return
 
-    # 4. Add remote
+    # 4. Add remote with token for authentication
+    auth_url = clone_url.replace("https://", f"https://{GITHUB_TOKEN}@")
     run_git_command(["git", "remote", "remove", "origin"]) # Clean up if exists
-    run_git_command(["git", "remote", "add", "origin", clone_url])
+    run_git_command(["git", "remote", "add", "origin", auth_url])
 
     # 5. Push
     print("Pushing to GitHub...")
