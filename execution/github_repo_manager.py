@@ -10,7 +10,24 @@ load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_USERNAME = os.getenv("GITHUB_USERNAME")
-REPO_NAME = os.path.basename(os.getcwd())
+# Sanitize repo name: replace spaces with hyphens
+REPO_NAME = os.path.basename(os.getcwd()).replace(" ", "-")
+
+def get_authenticated_user():
+    print("Fetching authenticated user information...")
+    url = "https://api.github.com/user"
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            return res_data['login']
+    except Exception as e:
+        print(f"Error fetching user: {e}")
+        return GITHUB_USERNAME
 
 def run_git_command(command):
     print(f"Running: {' '.join(command)}")
@@ -39,14 +56,16 @@ def create_github_repo(repo_name):
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             print(f"Successfully created repository: {res_data['html_url']}")
-            return True, res_data['clone_url']
+            return True, res_data['clone_url'], res_data['owner']['login']
     except urllib.error.HTTPError as e:
         if e.code == 422:
             print(f"Repository '{repo_name}' already exists or name is invalid.")
-            return True, f"https://github.com/{GITHUB_USERNAME}/{repo_name}.git"
+            # If it exists, we still need the correct owner to construct the clone URL
+            actual_owner = get_authenticated_user()
+            return True, f"https://github.com/{actual_owner}/{repo_name}.git", actual_owner
         else:
             print(f"Failed to create repository: {e.reason}")
-            return False, None
+            return False, None, None
 
 def main():
     if not GITHUB_TOKEN or not GITHUB_USERNAME:
@@ -64,12 +83,15 @@ def main():
     run_git_command(["git", "commit", "-m", "Initial commit from Antigravity"])
 
     # 3. Create repo on GitHub
-    success, clone_url = create_github_repo(REPO_NAME)
+    success, clone_url, actual_owner = create_github_repo(REPO_NAME)
     if not success:
         return
 
     # 4. Add remote with token for authentication
-    auth_url = clone_url.replace("https://", f"https://{GITHUB_TOKEN}@")
+    # Ensure clone_url is clean and add token
+    clean_clone_url = clone_url.replace(" ", "%20")
+    auth_url = clean_clone_url.replace("https://", f"https://{GITHUB_TOKEN}@")
+    
     run_git_command(["git", "remote", "remove", "origin"]) # Clean up if exists
     run_git_command(["git", "remote", "add", "origin", auth_url])
 
@@ -80,7 +102,7 @@ def main():
     
     if success:
         print("\nSUCCESS: Project pushed to GitHub!")
-        print(f"Repository URL: https://github.com/{GITHUB_USERNAME}/{REPO_NAME}")
+        print(f"Repository URL: https://github.com/{actual_owner}/{REPO_NAME}")
     else:
         print("\nFAILED: Could not push to GitHub. Check your credentials and network.")
 
