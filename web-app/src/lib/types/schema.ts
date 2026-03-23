@@ -5,8 +5,8 @@ export enum Role {
 
 export enum AgeGroup {
     JUNIOR = "JUNIOR",      // 6-9
-    ADOLESCENT = "ADOLESCENT", // 10-17
-    YOUNG_ADULT = "YOUNG_ADULT" // 18-21
+    ASSOCIATE = "ASSOCIATE", // 10-15
+    PARTNER = "PARTNER" // 16-21
 }
 
 export enum ChoreStatus {
@@ -40,6 +40,9 @@ export interface User {
     role: Role;
     ageGroup: AgeGroup;
     familyId: string;
+    birthdayKey?: string; // "M-D"
+    birthDate?: Date | any; // Firebase Timestamp
+    pendingPromotionNotification?: boolean;
 }
 
 export interface Company {

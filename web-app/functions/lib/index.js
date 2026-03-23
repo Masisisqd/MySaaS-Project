@@ -21,6 +21,7 @@ const firestore_1 = require("firebase-admin/firestore");
 admin.initializeApp();
 const db = admin.firestore();
 __exportStar(require("./auth"), exports);
+__exportStar(require("./cron"), exports);
 exports.settleServiceInvoice = functions.https.onCall(async (data, context) => {
     // 1. Security Check: MVP allows anyone for demo, but normally check: context.auth?.token.role === 'BOARD'
     const { invoiceId, companyId, familyId } = data;

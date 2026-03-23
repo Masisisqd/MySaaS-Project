@@ -18,8 +18,8 @@ const DEMO_FAMILY: Family = {
 };
 
 const DEMO_USERS: User[] = [
-    { id: "parent-1", email: "dad@smith.co", name: "David Smith", role: Role.BOARD, ageGroup: AgeGroup.YOUNG_ADULT, familyId: "family-smith" },
-    { id: "child-1", email: "leo@smith.co", name: "Leo Smith", role: Role.CEO, ageGroup: AgeGroup.ADOLESCENT, familyId: "family-smith" },
+    { id: "parent-1", email: "dad@smith.co", name: "David Smith", role: Role.BOARD, ageGroup: AgeGroup.PARTNER, familyId: "family-smith" },
+    { id: "child-1", email: "leo@smith.co", name: "Leo Smith", role: Role.CEO, ageGroup: AgeGroup.ASSOCIATE, familyId: "family-smith" },
     { id: "child-2", email: "mia@smith.co", name: "Mia Smith", role: Role.CEO, ageGroup: AgeGroup.JUNIOR, familyId: "family-smith" },
 ];
 

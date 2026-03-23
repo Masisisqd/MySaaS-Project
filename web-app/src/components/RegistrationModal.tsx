@@ -15,8 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
+import { AgeGroup } from "@/lib/types/schema";
 
 export function RegistrationModal({
     isOpen,
@@ -30,12 +31,22 @@ export function RegistrationModal({
     familyId: string;
 }) {
     const [companyName, setCompanyName] = useState("");
+    const [industry, setIndustry] = useState("");
+    const [ownerAge, setOwnerAge] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const sigCanvas = useRef<SignatureCanvas>(null);
 
     const handleRegister = async () => {
         if (!companyName.trim()) {
             toast.error("Please enter a company name.");
+            return;
+        }
+        if (!industry) {
+            toast.error("Please select an industry.");
+            return;
+        }
+        if (!ownerAge || isNaN(parseInt(ownerAge))) {
+            toast.error("Please enter a valid age.");
             return;
         }
 
@@ -50,9 +61,21 @@ export function RegistrationModal({
 
         setIsSubmitting(true);
         try {
+            // Determine ageGroup
+            const age = parseInt(ownerAge);
+            let ageGroup = AgeGroup.JUNIOR;
+            if (age >= 10 && age <= 15) ageGroup = AgeGroup.ASSOCIATE;
+            if (age >= 16) ageGroup = AgeGroup.PARTNER;
+
+            // Update user's ageGroup
+            await updateDoc(doc(db, "users", userId), {
+                ageGroup: ageGroup
+            });
+
             // Create the company in Firestore
             await addDoc(collection(db, "companies"), {
                 name: companyName,
+                industry: industry,
                 ceoId: userId,
                 familyId: familyId,
                 creditScore: 750, // Starting score
@@ -90,15 +113,50 @@ export function RegistrationModal({
                 <div className="grid gap-4 py-4">
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="companyName" className="text-zinc-300">
-                            Company Name (e.g. SwiftScrub Solutions)
+                            Business Name (Trading As)
                         </Label>
                         <Input
                             id="companyName"
                             value={companyName}
                             onChange={(e) => setCompanyName(e.target.value)}
                             className="bg-zinc-900 border-zinc-800 text-zinc-100"
-                            placeholder="Enter your registered business name"
+                            placeholder="e.g. SwiftScrub Solutions"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="industry" className="text-zinc-300">
+                                Industry Selection
+                            </Label>
+                            <select
+                                id="industry"
+                                value={industry}
+                                onChange={(e) => setIndustry(e.target.value)}
+                                className="h-10 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="" disabled>Select an industry...</option>
+                                <option value="Cleaning">Cleaning</option>
+                                <option value="Tech">Tech</option>
+                                <option value="Pet Care">Pet Care</option>
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="ownerAge" className="text-zinc-300">
+                                Owner Age
+                            </Label>
+                            <Input
+                                id="ownerAge"
+                                type="number"
+                                min={6}
+                                max={21}
+                                value={ownerAge}
+                                onChange={(e) => setOwnerAge(e.target.value)}
+                                className="bg-zinc-900 border-zinc-800 text-zinc-100"
+                                placeholder="e.g. 12"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-2">
