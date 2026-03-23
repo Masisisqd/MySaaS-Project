@@ -4,7 +4,6 @@ exports.getRiskFactors = getRiskFactors;
 exports.buildBoardAlertEmail = buildBoardAlertEmail;
 exports.buildCEORecoveryEmail = buildCEORecoveryEmail;
 exports.sendRiskAlertEmails = sendRiskAlertEmails;
-const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
 const SENDER_EMAIL = "alerts@prodigychoresuite.com";
@@ -156,12 +155,11 @@ function buildCEORecoveryEmail(companyName, childName, score) {
 }
 // ─── Send Risk Alert Emails ────────────────────────────────────────────────
 async function sendRiskAlertEmails(companyId, companyName, ceoId, familyId, newScore, riskFactors) {
-    var _a;
     const db = admin.firestore();
     // Initialize SendGrid
-    const apiKey = (_a = functions.config().sendgrid) === null || _a === void 0 ? void 0 : _a.key;
+    const apiKey = process.env.SENDGRID_API_KEY;
     if (!apiKey) {
-        console.error("SendGrid API key not configured. Run: firebase functions:config:set sendgrid.key=\"YOUR_KEY\"");
+        console.error("SENDGRID_API_KEY not configured. Add it to functions/.env");
         return;
     }
     sgMail.setApiKey(apiKey);

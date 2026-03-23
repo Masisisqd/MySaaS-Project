@@ -1,25 +1,21 @@
 // src/lib/currency.ts
+import { COUNTRIES, getCountryByCode, type CountryInfo } from "./countries";
 
-export interface CurrencyInfo {
-    currencyCode: string;
-    symbol: string;
-    locale: string;
-    decimals: number;
+// Re-export for backward compatibility
+export { COUNTRIES, getCountryByCode, type CountryInfo };
+
+// Legacy map (kept for existing components that reference it)
+export const CountryCurrencyMap: Record<string, { currencyCode: string; symbol: string; locale: string; decimals: number }> = {};
+for (const c of COUNTRIES) {
+    CountryCurrencyMap[c.code] = {
+        currencyCode: c.currencyCode,
+        symbol: c.symbol,
+        locale: c.locale,
+        decimals: ["JPY", "KRW", "VND", "KPW", "BIF", "CLP", "GNF", "ISK", "KMF", "PYG", "RWF", "UGX", "VUV", "XOF", "XAF", "DJF"].includes(c.currencyCode) ? 0 : 2,
+    };
 }
 
-export const CountryCurrencyMap: Record<string, CurrencyInfo> = {
-    USA: { currencyCode: "USD", symbol: "$", locale: "en-US", decimals: 2 },
-    GBR: { currencyCode: "GBP", symbol: "£", locale: "en-GB", decimals: 2 },
-    CAN: { currencyCode: "CAD", symbol: "$", locale: "en-CA", decimals: 2 },
-    AUS: { currencyCode: "AUD", symbol: "$", locale: "en-AU", decimals: 2 },
-    JPN: { currencyCode: "JPY", symbol: "¥", locale: "ja-JP", decimals: 0 },
-    KEN: { currencyCode: "KES", symbol: "KSh", locale: "en-KE", decimals: 2 },
-    ZAF: { currencyCode: "ZAR", symbol: "R", locale: "en-ZA", decimals: 2 },
-    IND: { currencyCode: "INR", symbol: "₹", locale: "hi-IN", decimals: 2 },
-    EU: { currencyCode: "EUR", symbol: "€", locale: "de-DE", decimals: 2 }, // Using Germany as default EU locale
-};
-
-export const DEFAULT_CURRENCY_LOCALE = CountryCurrencyMap["USA"];
+export const DEFAULT_CURRENCY_LOCALE = CountryCurrencyMap["US"] || { currencyCode: "USD", symbol: "$", locale: "en-US", decimals: 2 };
 
 /**
  * Formats a given number into a localized currency string.
@@ -29,8 +25,7 @@ export function formatCurrency(amount: number, locale: string = "en-US", currenc
     return new Intl.NumberFormat(locale, {
         style: "currency",
         currency: currencyCode,
-        // Depending on requirements, we might want to strictly enforce decimal places
-        // The API defaults are usually correct (e.g., 0 for JPY, 2 for USD)
+        minimumFractionDigits: 2,
     }).format(amount);
 }
 
@@ -39,5 +34,5 @@ export function formatCurrency(amount: number, locale: string = "en-US", currenc
  */
 export function getCurrencyDecimals(currencyCode: string): number {
     const info = Object.values(CountryCurrencyMap).find(c => c.currencyCode === currencyCode);
-    return info ? info.decimals : 2; // Default to 2
+    return info ? info.decimals : 2;
 }

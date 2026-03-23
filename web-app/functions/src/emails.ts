@@ -1,4 +1,3 @@
-import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as sgMail from "@sendgrid/mail";
 
@@ -179,9 +178,9 @@ export async function sendRiskAlertEmails(
     const db = admin.firestore();
 
     // Initialize SendGrid
-    const apiKey = functions.config().sendgrid?.key;
+    const apiKey = process.env.SENDGRID_API_KEY;
     if (!apiKey) {
-        console.error("SendGrid API key not configured. Run: firebase functions:config:set sendgrid.key=\"YOUR_KEY\"");
+        console.error("SENDGRID_API_KEY not configured. Add it to functions/.env");
         return;
     }
     sgMail.setApiKey(apiKey);
