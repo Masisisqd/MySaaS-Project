@@ -31,6 +31,7 @@ export interface Family {
     countryCode?: string;
     currencyCode?: string;
     locale?: string;
+    parentEmail?: string; // For Board alert delivery
 }
 
 export interface User {
@@ -60,6 +61,7 @@ export interface Company {
     overheadCost: number;    // Rental fees paid
 
     lastScoreUpdate?: Date | any; // Firebase Timestamp
+    isRiskAlertSent?: boolean; // Duplicate email prevention flag
 }
 
 export interface AcademicLog {

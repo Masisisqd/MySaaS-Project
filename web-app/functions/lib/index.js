@@ -94,9 +94,12 @@ exports.settleServiceInvoice = functions.https.onCall(async (data, context) => {
 exports.updateWeeklyCreditScore = functions.pubsub.schedule("0 0 * * 0").onRun(async (context) => {
     const companiesSnap = await db.collection("companies").get();
     const batch = db.batch();
-    for (const doc of companiesSnap.docs) {
-        // companyData unused
-        const companyId = doc.id;
+    const alertPromises = [];
+    for (const companyDoc of companiesSnap.docs) {
+        const companyData = companyDoc.data();
+        const companyId = companyDoc.id;
+        const oldCreditScore = companyData.creditScore || 600;
+        const isRiskAlertSent = companyData.isRiskAlertSent || false;
         // In a full production app, these would query historical data:
         // SLA Score = (on time contracts / total contracts) * 1.0
         // RD Score = docs in academicLogs where status=APPROVED / 7 days
@@ -111,14 +114,35 @@ exports.updateWeeklyCreditScore = functions.pubsub.schedule("0 0 * * 0").onRun(a
         const weightedAverage = (slaScore * 0.4) + (rdScore * 0.3) + (qaScore * 0.2) + (fiscalScore * 0.1);
         // Map to 300-850 Scale
         const newCreditScore = Math.round(300 + (550 * weightedAverage));
-        // Update Company
+        // Update Company Score
         const companyRef = db.collection("companies").doc(companyId);
         batch.update(companyRef, {
             creditScore: newCreditScore,
             lastScoreUpdate: firestore_1.FieldValue.serverTimestamp()
         });
+        // ─── Risk Alert Trigger Logic ──────────────────────────────────
+        // Trigger: Score just crossed below 500 AND alert not already sent
+        if (newCreditScore < 500 && oldCreditScore >= 500 && !isRiskAlertSent) {
+            const { getRiskFactors, sendRiskAlertEmails } = await Promise.resolve().then(() => require("./emails"));
+            const alertPromise = (async () => {
+                const riskFactors = await getRiskFactors(companyId, companyData.ceoId, companyData.familyId);
+                await sendRiskAlertEmails(companyId, companyData.name || "Unknown Company", companyData.ceoId, companyData.familyId, newCreditScore, riskFactors);
+            })();
+            alertPromises.push(alertPromise);
+        }
+        // Recovery: Score climbed back above 500, reset the flag
+        if (newCreditScore >= 500 && isRiskAlertSent) {
+            batch.update(companyRef, {
+                isRiskAlertSent: false
+            });
+        }
     }
     await batch.commit();
+    // Wait for all alert emails to finish sending
+    if (alertPromises.length > 0) {
+        await Promise.allSettled(alertPromises);
+        console.log(`Processed ${alertPromises.length} risk alert(s).`);
+    }
     console.log("Weekly Credit Scores updated successfully.");
 });
 //# sourceMappingURL=index.js.map
