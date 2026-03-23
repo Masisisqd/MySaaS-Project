@@ -31,6 +31,7 @@ export interface Family {
     countryCode?: string;
     currencyCode?: string;
     locale?: string;
+    timezone?: string; // IANA timezone string
     parentEmail?: string; // For Board alert delivery
 }
 

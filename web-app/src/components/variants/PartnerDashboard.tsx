@@ -2,10 +2,12 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
+import MarketClock from "@/components/MarketClock";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { ArrowUpRight, TrendingUp, DollarSign, Percent, FileText } from "lucide-react";
 
 export default function PartnerDashboard({ user, theme }: { user: any, theme: string }) {
+    const family = user?.family;
     const company = user?.company;
     // Stripe / FinTech styling variables
     const data = [
@@ -29,14 +31,9 @@ export default function PartnerDashboard({ user, theme }: { user: any, theme: st
                     </h1>
                     <p className="text-sm text-zinc-500 mt-1">SLA Compliance & Operating Expenses</p>
                 </div>
-                <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-medium text-white rounded-md transition-colors">
-                        Issue Invoice
-                    </button>
-                    <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-sm font-medium text-white rounded-md transition-colors flex items-center gap-1">
-                        View Statement <ArrowUpRight size={14} />
-                    </button>
-                </div>
+                
+                {/* Timezone-Aware Market Clock */}
+                {family && <MarketClock timezone={family.timezone} />}
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

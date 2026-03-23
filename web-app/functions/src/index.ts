@@ -92,14 +92,35 @@ export const settleServiceInvoice = functions.https.onCall(async (data, context)
     });
 });
 
-export const updateWeeklyCreditScore = functions.pubsub.schedule("0 0 * * 0").onRun(async (context) => {
+export const updateWeeklyCreditScore = functions.pubsub.schedule("1 * * * *").onRun(async (context) => {
     const companiesSnap = await db.collection("companies").get();
     const batch = db.batch();
     const alertPromises: Promise<void>[] = [];
+    
+    // Lazy-load Luxon in the function scope
+    const { DateTime } = await import("luxon");
 
     for (const companyDoc of companiesSnap.docs) {
         const companyData = companyDoc.data();
         const companyId = companyDoc.id;
+
+        // Fetch Family to enforce the Local Reset Engine
+        const familyDoc = await db.collection("families").doc(companyData.familyId).get();
+        const familyTimezone = familyDoc.data()?.timezone || "UTC";
+
+        // Get live time relative to the family's geographical timezone
+        const localNow = DateTime.now().setZone(familyTimezone);
+
+        // Run strictly on local Sundays (1 = Mon, 7 = Sun)
+        if (localNow.weekday !== 7) continue;
+
+        // Prevent duplicate runs: only score if it's been at least 6 days since the last run
+        if (companyData.lastScoreUpdate) {
+            const lastUpdateJS = companyData.lastScoreUpdate.toDate();
+            const daysSinceLastUpdate = DateTime.now().diff(DateTime.fromJSDate(lastUpdateJS), "days").days;
+            if (daysSinceLastUpdate < 6) continue;
+        }
+
         const oldCreditScore = companyData.creditScore || 600;
         const isRiskAlertSent = companyData.isRiskAlertSent || false;
 
@@ -164,5 +185,5 @@ export const updateWeeklyCreditScore = functions.pubsub.schedule("0 0 * * 0").on
         console.log(`Processed ${alertPromises.length} risk alert(s).`);
     }
 
-    console.log("Weekly Credit Scores updated successfully.");
+    console.log("Weekly Credit Scores evaluated natively in Local Time.");
 });

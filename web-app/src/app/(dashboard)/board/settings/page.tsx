@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { COUNTRIES, type CountryInfo } from "@/lib/countries";
 import { formatCurrency } from "@/lib/currency";
 import { toast } from "sonner";
-import { Globe, Check, AlertTriangle, Search, Shield } from "lucide-react";
+import { Globe, Check, AlertTriangle, Search, Shield, Clock } from "lucide-react";
 import { Command } from "cmdk";
 
 export default function BoardSettingsPage() {
@@ -17,8 +17,13 @@ export default function BoardSettingsPage() {
     const [familyData, setFamilyData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [tzSearch, setTzSearch] = useState("");
     const [open, setOpen] = useState(false);
+    const [tzOpen, setTzOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    
+    // Timezones cache
+    const timezones = Intl.supportedValuesOf('timeZone');
 
     // Fetch family data from Firestore
     useEffect(() => {
@@ -67,9 +72,34 @@ export default function BoardSettingsPage() {
         }
     };
 
+    const handleTimezoneSelect = async (tz: string) => {
+        if (!familyData?.id) return;
+        setSaving(true);
+        setTzOpen(false);
+
+        try {
+            await updateDoc(doc(db, "families", familyData.id), {
+                timezone: tz,
+            });
+
+            setFamilyData((prev: any) => ({
+                ...prev,
+                timezone: tz,
+            }));
+
+            toast.success(`Timezone updated to ${tz}`);
+        } catch (err) {
+            console.error("Failed to update timezone settings", err);
+            toast.error("Permission denied or network error");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const selectedCountry = COUNTRIES.find(c => c.code === familyData?.countryCode);
     const currentLocale = familyData?.locale || "en-US";
     const currentCurrency = familyData?.currencyCode || "USD";
+    const currentTimezone = familyData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
     if (loading) {
         return <div className="text-zinc-400 p-8 animate-pulse text-lg">Loading Global Settings...</div>;
@@ -179,6 +209,60 @@ export default function BoardSettingsPage() {
                         )}
                     </div>
 
+                    {/* Searchable Timezone Combobox */}
+                    <div className="relative mt-4">
+                        <Label className="text-xs text-zinc-500 uppercase tracking-wider mb-2 block">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Local Reset Timezone
+                        </Label>
+
+                        {/* Trigger Button */}
+                        <button
+                            onClick={() => setTzOpen(!tzOpen)}
+                            disabled={saving}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-zinc-950 border-2 border-zinc-800 rounded-xl text-left hover:border-zinc-700 transition-colors disabled:opacity-50"
+                        >
+                            <span className="text-zinc-100 font-medium font-mono">{currentTimezone}</span>
+                            <Search className="w-4 h-4 text-zinc-500" />
+                        </button>
+
+                        {/* Dropdown */}
+                        {tzOpen && (
+                            <div className="absolute z-50 w-full mt-2 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden max-h-[300px]">
+                                <Command className="bg-transparent">
+                                    <div className="flex items-center gap-2 px-3 border-b border-zinc-800">
+                                        <Search className="w-4 h-4 text-zinc-500 shrink-0" />
+                                        <Command.Input
+                                            value={tzSearch}
+                                            onValueChange={setTzSearch}
+                                            placeholder="Search timezones (e.g., America/New_York)..."
+                                            className="w-full py-3 bg-transparent text-zinc-100 text-sm outline-none placeholder:text-zinc-600"
+                                        />
+                                    </div>
+                                    <Command.List className="overflow-y-auto p-1">
+                                        <Command.Empty className="p-4 text-center text-sm text-zinc-500">
+                                            No timezone found.
+                                        </Command.Empty>
+                                        {timezones.map((tz) => {
+                                            const isSelected = tz === currentTimezone;
+                                            return (
+                                                <Command.Item
+                                                    key={tz}
+                                                    value={tz}
+                                                    onSelect={() => handleTimezoneSelect(tz)}
+                                                    className="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer text-sm transition-colors data-[selected=true]:bg-zinc-800 data-[selected=true]:text-zinc-100 text-zinc-400 hover:text-zinc-200"
+                                                >
+                                                    <span className="font-medium text-zinc-200">{tz}</span>
+                                                    {isSelected && <Check className="w-4 h-4 text-emerald-500" />}
+                                                </Command.Item>
+                                            );
+                                        })}
+                                    </Command.List>
+                                </Command>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Live Config Preview */}
                     <div className="bg-zinc-950 rounded-xl p-5 border border-zinc-800">
                         <h4 className="text-sm font-semibold text-zinc-300 mb-3">Current Configuration Preview</h4>
@@ -199,6 +283,16 @@ export default function BoardSettingsPage() {
                                 <Label className="text-[10px] text-zinc-500 uppercase tracking-wider">Format Example</Label>
                                 <div className="text-emerald-400 font-bold">
                                     {formatCurrency(1250.50, currentLocale, currentCurrency)}
+                                </div>
+                            </div>
+                            <div className="col-span-2 sm:col-span-4 mt-2 pt-4 border-t border-zinc-800/50">
+                                <Label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Live Local Time (SLA / Deadlines)</Label>
+                                <div className="text-zinc-300 font-mono text-sm tracking-tight">
+                                    {new Intl.DateTimeFormat(currentLocale, { 
+                                        timeZone: currentTimezone, 
+                                        dateStyle: 'full', 
+                                        timeStyle: 'long' 
+                                    }).format(new Date())}
                                 </div>
                             </div>
                         </div>

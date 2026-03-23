@@ -2,9 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
+import MarketClock from "@/components/MarketClock";
 import { Activity, Briefcase, Filter, Box } from "lucide-react";
 
 export default function AssociateDashboard({ user, theme }: { user: any, theme: string }) {
+    const family = user?.family;
     const company = user?.company;
     // Linear / Notion style variables
     const efficiencyScore = 88; // Example derived score
@@ -14,13 +16,17 @@ export default function AssociateDashboard({ user, theme }: { user: any, theme: 
         <div className="max-w-6xl mx-auto flex gap-6 mt-4">
             {/* Main Area: Kanban & Metrics */}
             <div className="flex-1 space-y-6">
-                <div>
-                    <h1 className="text-2xl font-semibold text-zinc-100 flex items-center gap-2">
-                        <Briefcase size={20} className="text-indigo-400" /> 
-                        {company?.name || "The Micro-SaaS"}
-                    </h1>
-                    <p className="text-sm text-zinc-400 mt-1">Service Orders & Profit Margins</p>
-                </div>
+                <header className="flex items-center justify-between pb-4 border-b border-zinc-800">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-zinc-100 flex items-center gap-2">
+                            <Briefcase size={20} className="text-indigo-400" /> 
+                            {company?.name || "The Micro-SaaS"}
+                        </h1>
+                        <p className="text-sm text-zinc-400 mt-1">Service Orders & Profit Margins</p>
+                    </div>
+                    {/* Timezone-Aware Market Clock */}
+                    {family && <MarketClock timezone={family.timezone} />}
+                </header>
 
                 {/* Metrics Row */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
