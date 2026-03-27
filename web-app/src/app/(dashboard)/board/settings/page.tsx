@@ -27,7 +27,10 @@ export default function BoardSettingsPage() {
 
     // Fetch family data from Firestore
     useEffect(() => {
-        if (!userData?.familyId) return;
+        if (!userData?.familyId) {
+            setLoading(false);
+            return;
+        }
         const fetchFamily = async () => {
             try {
                 const familyDoc = await getDoc(doc(db, "families", userData.familyId));

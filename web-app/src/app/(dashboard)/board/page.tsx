@@ -4,6 +4,7 @@ import { useDemoData } from "@/lib/demo/DemoContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChoreStatus } from "@/lib/types/schema";
 import { formatCurrency } from "@/lib/currency";
+import { ExportQBRButton } from "@/components/qbr/ExportQBRButton";
 
 export default function BoardOverview() {
     const { family, companies, contracts, equipment, academicLogs } = useDemoData();
@@ -89,6 +90,9 @@ export default function BoardOverview() {
                                         <div className="text-xs text-zinc-500">Reinvest</div>
                                         <div className="text-sm font-semibold text-zinc-200">{formatCurrency(company.reinvestBalance, family.locale, family.currencyCode)}</div>
                                     </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-zinc-800 flex justify-end">
+                                    <ExportQBRButton companyId={company.id} />
                                 </div>
                             </CardContent>
                         </Card>

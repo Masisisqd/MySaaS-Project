@@ -1,7 +1,9 @@
+// src/app/(dashboard)/layout.tsx
 "use client";
 
 import { DemoProvider, useDemoData } from "@/lib/demo/DemoContext";
 import { Sidebar } from "@/components/Sidebar";
+import { useAuth } from "@/context/AuthContext";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
     const { isJunior, currentUser } = useDemoData();
@@ -25,6 +27,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const { user, loading } = useAuth();
+
+    // If we are logged in with a real account, we should ideally not use DemoProvider
+    // but the pages inside depend on useDemoData(). 
+    // So the best approach is to modify DemoProvider to return real data if logged in.
+    
     return (
         <DemoProvider>
             <DashboardShell>{children}</DashboardShell>

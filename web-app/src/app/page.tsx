@@ -24,7 +24,16 @@ export default function Home() {
               size="lg"
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8"
             >
-              Enter as Board (Parent)
+              Enter as Board (Demo)
+            </Button>
+          </Link>
+          <Link href="/parent/login">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-blue-700 text-blue-300 hover:bg-blue-900 px-8"
+            >
+              Board Login (Real)
             </Button>
           </Link>
           <Link href="/ceo">
@@ -33,12 +42,21 @@ export default function Home() {
               variant="outline"
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-8"
             >
-              Enter as CEO (Child)
+              Enter as CEO (Demo)
+            </Button>
+          </Link>
+          <Link href="/switcher">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-amber-700 text-amber-300 hover:bg-amber-900 px-8"
+            >
+              CEO Login (Real)
             </Button>
           </Link>
         </div>
 
-        <p className="text-xs text-zinc-600 mt-6">Demo Mode — No Firebase credentials needed</p>
+        <p className="text-xs text-zinc-600 mt-6 md:mt-2">Use 'Real' buttons for Firebase Emulator testing</p>
       </div>
     </main>
   );

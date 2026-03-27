@@ -1,0 +1,4 @@
+# Firebase Functions
+lib/
+node_modules/
+.env

@@ -1,11 +1,15 @@
+// src/lib/demo/DemoContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { Role, AgeGroup, ChoreStatus, TaskStatus } from "@/lib/types/schema";
 import type { Family, User, Company, Contract, AcademicLog, Equipment, Invoice } from "@/lib/types/schema";
+import { useAuth } from "@/context/AuthContext";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
 // ─── Demo Seed Data ───────────────────────────────────────────────
-
+// (kept as fallback)
 const DEMO_FAMILY: Family = {
     id: "family-smith",
     companyName: "The Smith Group",
@@ -34,11 +38,11 @@ const DEMO_EQUIPMENT: Equipment[] = [
     { id: "eq-3", familyId: "family-smith", name: "Dish Rack Deluxe", category: "Kitchen", rentalRate: 0.25, energyFee: 0.02, condition: 95 },
 ];
 
-const today = new Date().toISOString().split("T")[0];
+const todayStr = new Date().toISOString().split("T")[0];
 
 const DEMO_ACADEMIC_LOGS: AcademicLog[] = [
-    { id: "al-1", userId: "child-1", familyId: "family-smith", subject: "Algebra Homework", minutesSpent: 45, status: TaskStatus.APPROVED, date: today, createdAt: new Date() },
-    { id: "al-2", userId: "child-2", familyId: "family-smith", subject: "Reading — Charlotte's Web", minutesSpent: 30, status: TaskStatus.COMPLETED, date: today, createdAt: new Date() },
+    { id: "al-1", userId: "child-1", familyId: "family-smith", subject: "Algebra Homework", minutesSpent: 45, status: TaskStatus.APPROVED, date: todayStr, createdAt: new Date() },
+    { id: "al-2", userId: "child-2", familyId: "family-smith", subject: "Reading — Charlotte's Web", minutesSpent: 30, status: TaskStatus.COMPLETED, date: todayStr, createdAt: new Date() },
 ];
 
 const DEMO_CONTRACTS: Contract[] = [
@@ -74,6 +78,7 @@ interface DemoContextType {
     invoices: Invoice[];
     setInvoices: React.Dispatch<React.SetStateAction<Invoice[]>>;
     updateFamilySettings: (settings: Partial<Family>) => void;
+    isRealMode: boolean;
 }
 
 const DemoContext = createContext<DemoContextType | null>(null);
@@ -85,39 +90,89 @@ export function useDemoData() {
 }
 
 export function DemoProvider({ children }: { children: ReactNode }) {
+    const { user, userData, loading: authLoading } = useAuth();
+    
     const [currentRole, setCurrentRole] = useState<Role>(Role.BOARD);
     const [currentChildId, setCurrentChildId] = useState<string>("child-1");
     const [equipment, setEquipment] = useState<Equipment[]>(DEMO_EQUIPMENT);
     const [academicLogs, setAcademicLogs] = useState<AcademicLog[]>(DEMO_ACADEMIC_LOGS);
     const [contracts, setContracts] = useState<Contract[]>(DEMO_CONTRACTS);
     const [invoices, setInvoices] = useState<Invoice[]>(DEMO_INVOICES);
-    const [demoFamily, setDemoFamily] = useState<Family>(DEMO_FAMILY);
+    const [family, setFamily] = useState<Family>(DEMO_FAMILY);
+    const [users, setUsers] = useState<User[]>(DEMO_USERS);
+    const [companies, setCompanies] = useState<Company[]>(DEMO_COMPANIES);
+    const [isRealMode, setIsRealMode] = useState(false);
 
-    const currentUser = currentRole === Role.BOARD
-        ? DEMO_USERS[0]
-        : DEMO_USERS.find(u => u.id === currentChildId) || DEMO_USERS[1];
+    useEffect(() => {
+        if (!authLoading && userData?.familyId) {
+            setIsRealMode(true);
+            const fetchRealData = async () => {
+                const fId = userData.familyId;
+                
+                // Fetch Family
+                const familyDoc = await getDoc(doc(db, "families", fId));
+                if (familyDoc.exists()) setFamily({ id: familyDoc.id, ...familyDoc.data() } as Family);
+
+                // Fetch Users
+                const usersSnap = await getDocs(query(collection(db, "users"), where("familyId", "==", fId)));
+                const realUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User));
+                setUsers(realUsers);
+
+                // Fetch Companies
+                const compSnap = await getDocs(query(collection(db, "companies"), where("familyId", "==", fId)));
+                setCompanies(compSnap.docs.map(d => ({ id: d.id, ...d.data() } as Company)));
+
+                // Fetch Contracts
+                const contSnap = await getDocs(query(collection(db, "contracts"), where("familyId", "==", fId)));
+                setContracts(contSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contract)));
+
+                // Fetch Equipment
+                const eqSnap = await getDocs(query(collection(db, "equipment"), where("familyId", "==", fId)));
+                setEquipment(eqSnap.docs.map(d => ({ id: d.id, ...d.data() } as Equipment)));
+
+                // Fetch Academic Logs
+                const alSnap = await getDocs(query(collection(db, "academicLogs"), where("familyId", "==", fId)));
+                setAcademicLogs(alSnap.docs.map(d => ({ id: d.id, ...d.data() } as AcademicLog)));
+
+                // Fetch Invoices
+                const invSnap = await getDocs(query(collection(db, "invoices"), where("familyId", "==", fId)));
+                setInvoices(invSnap.docs.map(d => ({ id: d.id, ...d.data() } as Invoice)));
+
+                // Sync currentRole and childId
+                setCurrentRole(userData.role as any); // Cast for demo context flexibility
+                if (userData.role === Role.CEO) setCurrentChildId(userData.id);
+            };
+            fetchRealData();
+        } else {
+            setIsRealMode(false);
+        }
+    }, [userData, authLoading]);
+
+    const currentUser = isRealMode
+        ? users.find(u => u.id === (currentRole === Role.BOARD ? userData?.id : currentChildId)) || users[0]
+        : currentRole === Role.BOARD ? users[0] : users.find(u => u.id === currentChildId) || users[1];
 
     const currentCompany = currentRole === Role.CEO
-        ? DEMO_COMPANIES.find(c => c.ceoId === currentUser.id) || null
+        ? companies.find(c => c.ceoId === currentUser?.id) || null
         : null;
 
-    const isJunior = currentUser.ageGroup === AgeGroup.JUNIOR;
+    const isJunior = currentUser?.ageGroup === AgeGroup.JUNIOR;
 
     const switchRole = (role: Role) => setCurrentRole(role);
     const switchChild = (userId: string) => { setCurrentChildId(userId); setCurrentRole(Role.CEO); };
     const updateFamilySettings = (settings: Partial<Family>) => {
-        setDemoFamily(prev => ({ ...prev, ...settings }));
+        setFamily(prev => ({ ...prev, ...settings }));
     };
 
     return (
         <DemoContext.Provider value={{
-            family: demoFamily,
-            users: DEMO_USERS,
-            currentUser,
+            family,
+            users,
+            currentUser: currentUser as User,
             switchRole,
             switchChild,
             isJunior,
-            companies: DEMO_COMPANIES,
+            companies,
             currentCompany,
             equipment,
             setEquipment,
@@ -128,6 +183,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
             invoices,
             setInvoices,
             updateFamilySettings,
+            isRealMode
         }}>
             {children}
         </DemoContext.Provider>

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@react-pdf/renderer": "^4.3.2",
     "@types/react-signature-canvas": "^1.0.7",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

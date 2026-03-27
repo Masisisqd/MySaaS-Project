@@ -7,6 +7,7 @@ const db = admin.firestore();
 
 export * from "./auth";
 export * from "./cron";
+export * from "./qbr";
 
 export const settleServiceInvoice = functions.https.onCall(async (data, context) => {
     // 1. Security Check: MVP allows anyone for demo, but normally check: context.auth?.token.role === 'BOARD'
